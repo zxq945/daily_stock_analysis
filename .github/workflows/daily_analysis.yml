@@ -78,13 +78,13 @@ jobs:
           echo "=========================================="
           MODE="${{ github.event.inputs.mode || 'stocks-only' }}"
           if [ "${{ github.event.inputs.force_run }}" = "true" ]; then
-            python main.py --stocks-only --force-run
+            python main.py --stocks_only --force-run
           elif [ "$MODE" = "full" ]; then
             python main.py
           elif [ "$MODE" = "market-only" ]; then
             python main.py --market-review
           else
-            python main.py --stocks-only
+            python main.py --stocks_only
           fi
 
       - name: 显示结果
