@@ -1,28 +1,107 @@
-name: A股持仓技术分析 - 每日推送 
-on: schedule:
-  - cron: '20 1 1-5'
-workflow_dispatch: inputs: mode: description: '运行模式' required: true default: 'stocks-only' type: choice options:
-- full
-- stocks-only
-- market-only
-force_run: description: '强制运行（含非交易日）' required: false default: true type: boolean
-concurrency: group: stock-analysis cancel-in-progress: false
-jobs: analyze: runs-on: ubuntu-latest timeout-minutes: 25
-steps:
-- name: 随机启动延迟
-run: sleep $((RANDOM % 90))
-- name: 检出代码
-uses: actions/checkout@v5
-- name: 设置 Python 环境
-uses: actions/setup-python@v6 with: python-version: '3.11' cache: 'pip'
-- name: 安装依赖
-run: | pip install --upgrade pip pip install -r requirements.txt
-- name: 创建必要目录
-run: mkdir -p data logs reports
-- name: 执行股票分析
-env: DEEPSEEKAPIKEY: ${{ secrets.DEEPSEEKAPIKEY }} SERVERCHAN3SENDKEY: ${{ secrets.SERVERCHAN3SENDKEY }} STOCKLIST: ${{ vars.STOCKLIST }} MARKETREVIEWREGION: ${{ vars.MARKETREVIEWREGION }} REPORT_TYPE: simple SINGLESTOCKNOTIFY: 'true' MARKETREVIEWENABLED: 'true' MARKETREVIEWCOLORSCHEME: greenup TRADINGDAYCHECK_ENABLED: 'true' LOG_LEVEL: INFO MAX_WORKERS: '1' REALTIMESOURCEPRIORITY: tencent,aksharesina,efinance,akshareem NOTIFICATIONREPORTCHANNELS: serverchan3 NOTIFICATIONALERTCHANNELS: serverchan3 NOTIFICATIONSYSTEMERROR_CHANNELS: serverchan3
-run: | echo "==========================================" echo "🚀 A股持仓技术分析" echo "⏰ 时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')" echo "📊 持仓: 澜起|云天化|立讯|三花|兆易|建龙|光力|博睿|阿里" echo "==========================================" MODE="${{ github.event.inputs.mode || 'stocks-only' }}" if [ "${{ github.event.inputs.force_run }}" = "true" ]; then python main.py --stocks-only --force-run elif [ "$MODE" = "full" ]; then python main.py elif [ "$MODE" = "market-only" ]; then python main.py --market-review else python main.py --stocks-only fi
-- name: 显示结果
-if: always() run: | echo "==========================================" echo "📊 分析完成 - $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')" echo "==========================================" ls -la reports/*.md 2>/dev/null || echo "无报告" tail -20 logs/stockanalysis*.log 2>/dev/null || echo "无日志"
-- name: 上传报告
-uses: actions/upload-artifact@v6 if: always() with: name: reports-${{ github.run_number }}-$(date +%Y%m%d) path: | reports/ logs/ retention-days: 14
+name: A股持仓技术分析 - 每日推送
+
+on:
+  schedule:
+    # 每周一到周五 北京时间 09:25 运行
+    # GitHub 使用 UTC 时间，北京时间 = UTC + 8小时
+    # 所以 09:25 北京时间 = 01:25 UTC
+    - cron: '25 1 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '运行模式'
+        required: true
+        default: 'stocks-only'
+        type: choice
+        options:
+          - full
+          - stocks-only
+          - market-only
+      force_run:
+        description: '强制运行（含非交易日）'
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: stock-analysis
+  cancel-in-progress: false
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: 随机启动延迟
+        run: sleep $((RANDOM % 90))
+
+      - name: 检出代码
+        uses: actions/checkout@v5
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 安装依赖
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 创建必要目录
+        run: mkdir -p data logs reports
+
+      - name: 执行股票分析
+        env:
+          DEEPSEEKAPIKEY: ${{ secrets.DEEPSEEKAPIKEY }}
+          SERVERCHAN3SENDKEY: ${{ secrets.SERVERCHAN3SENDKEY }}
+          STOCKLIST: ${{ vars.STOCKLIST }}
+          MARKETREVIEWREGION: ${{ vars.MARKETREVIEWREGION }}
+          REPORT_TYPE: simple
+          SINGLESTOCKNOTIFY: 'true'
+          MARKETREVIEWENABLED: 'true'
+          MARKETREVIEWCOLORSCHEME: greenup
+          TRADINGDAYCHECK_ENABLED: 'true'
+          LOG_LEVEL: INFO
+          MAX_WORKERS: '1'
+          REALTIMESOURCEPRIORITY: tencent,aksharesina,efinance,akshareem
+          NOTIFICATIONREPORTCHANNELS: serverchan3
+          NOTIFICATIONALERTCHANNELS: serverchan3
+          NOTIFICATIONSYSTEMERROR_CHANNELS: serverchan3
+        run: |
+          echo "=========================================="
+          echo "🚀 A股持仓技术分析"
+          echo "⏰ 时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
+          echo "📊 持仓: 澜起|云天化|立讯|三花|兆易|建龙|光力|博睿|阿里"
+          echo "=========================================="
+          MODE="${{ github.event.inputs.mode || 'stocks-only' }}"
+          if [ "${{ github.event.inputs.force_run }}" = "true" ]; then
+            python main.py --stocks-only --force-run
+          elif [ "$MODE" = "full" ]; then
+            python main.py
+          elif [ "$MODE" = "market-only" ]; then
+            python main.py --market-review
+          else
+            python main.py --stocks-only
+          fi
+
+      - name: 显示结果
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "📊 分析完成 - $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
+          echo "=========================================="
+          ls -la reports/*.md 2>/dev/null || echo "无报告"
+          tail -20 logs/stockanalysis*.log 2>/dev/null || echo "无日志"
+
+      - name: 上传报告
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: reports-${{ github.run_number }}-$(date +%Y%m%d)
+          path: |
+            reports/
+            logs/
+          retention-days: 14
