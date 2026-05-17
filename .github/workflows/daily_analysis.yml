@@ -1,4 +1,4 @@
-name: A股持仓技术分析 - 每日推送
+name: A股持仓技术分析 - 每日推送 
 on: schedule:
 - cron: '20 1   1-5'
 workflow_dispatch: inputs: mode: description: '运行模式' required: true default: 'stocks-only' type: choice options:
