@@ -76,15 +76,24 @@ jobs:
           echo "⏰ 时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
           echo "📊 持仓: 澜起|云天化|立讯|三花|兆易|建龙|光力|博睿|阿里"
           echo "=========================================="
+          # 找到这一段代码，并按如下修改
           MODE="${{ github.event.inputs.mode || 'stocks-only' }}"
+          
+          # 如果是强制运行，直接运行主程序，不需要加 --stocks-only
           if [ "${{ github.event.inputs.force_run }}" = "true" ]; then
-            python main.py --stocks_only --force-run
+            python main.py --force-run
+          
+          # 如果是 full 模式
           elif [ "$MODE" = "full" ]; then
             python main.py
+          
+          # 如果是 market-only 模式（看日志里好像支持 --market-review）
           elif [ "$MODE" = "market-only" ]; then
             python main.py --market-review
+          
+          # 默认情况（也就是原来的 stocks-only）：直接运行主程序即可
           else
-            python main.py --stocks_only
+            python main.py
           fi
 
       - name: 显示结果
